@@ -1,11 +1,8 @@
 var mongoose = require('mongoose')
+
 var DiscSchema = mongoose.Schema(
     {
-        owner: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
         brand: {type: String, required: true},
-        name: {type: String, required: true},
-        color: {type: String, required: true},
-        weight: {type: Number, min: 120, max: 180 },
         type: {type: String, required: true, enum: ['Distance Driver', 'Fairwar Driver', 'Mid-range', 'Putter'], },
         speed: {type: Number, min: 1, max: 13},
         glide: {type: Number, min: 1, max: 7},
