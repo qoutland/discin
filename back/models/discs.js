@@ -2,8 +2,12 @@ var mongoose = require('mongoose')
 
 var DiscSchema = mongoose.Schema(
     {
+        owner: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
         brand: {type: String, required: true},
-        type: {type: String, required: true, enum: ['Distance Driver', 'Fairwar Driver', 'Mid-range', 'Putter'], },
+        name: {type: String, required: true},
+        color: {type: String, required: true},
+        weight: {type: Number, min: 120, max: 180},
+        type: {type: String, required: true, enum: ['Distance Driver', 'Fairway Driver', 'Mid-range', 'Putter'], },
         speed: {type: Number, min: 1, max: 13},
         glide: {type: Number, min: 1, max: 7},
         turn: {type: Number, min: -5, max: 1},
@@ -12,9 +16,10 @@ var DiscSchema = mongoose.Schema(
     }
 )
 
-DiscSchema.pre('save', function(next) {
-    console.log('before you save');
-    next();
-});
+DiscSchema
+.virtual('url')
+.get(function() {
+    return '/disc/' + this._id;
+})
 
 module.exports = mongoose.model('Disc', DiscSchema);

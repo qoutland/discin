@@ -6,14 +6,21 @@ router.get('/', function(req, res) {
 });
 
 router.get('/login', function(req, res) {
-    res.json({errors: req.body.errors});
+    res.render('login', {errors: req.body.errors});
 });
 
-router.post('/login', passport.authenticate('local-login', {}),
-    function(req, res, next) {
-        var redirectTo = req.session.redirectTo || '/profile';
-        delete req.session.redirectTo;
-        res.json({"status": "logged in"});
+router.post('/login', function(req, res, next) {
+    passport.authenticate('local-login', function(err, user, info) {
+        if (err) { return next(err)}
+        if (!user) {
+            console.log(info)
+            return res.render('login', {errors: info})
+        }
+        req.login(user, function(err) {
+            if (err) {return next(err);}
+            return res.send({success: true, message: 'authentication succeeded'})
+        })
+    })(req, res, next);
 });
 
 router.get('/signup', function(req, res) {

@@ -1,17 +1,63 @@
-const mongoose = require('mongoose');
-const passport = require('passport');
-const LocalStrategy = require('passport-local');
+const LocalStrategy = require('passport-local').Strategy;
+const User = require('../models/users');
+var flash = require('connect-flash');
+module.exports = function(passport) {
+    
+    passport.serializeUser( function(user, done) {
+        done(null, user.id);
+    });
 
-const Users = mongoose.model('User');
+    passport.deserializeUser(function(id, done) {
+        User.findById(id, function(err, user) {
+            done(err, user);
+        });
+    });
 
-passport.use(new LocalStrategy({
-    usernameField: 'user[email]',
-    passwordField: 'user[password]',
-}, (email, password, done) => {
-    Users.findOne({ email: email }, function(err, user) {
-        if (err) {return done(err); }
-        if (!user) {return done(null, false, {message: 'Incorrect username'}); }
-        if (!user.validatePassword(password)) {return done(null, false, {message: 'Incorrect password'}); }
-        return done(null, user);
-    })
-}));
+    passport.use('local-signup', new LocalStrategy({
+        usernameField: 'email',
+        passwordField: 'password',
+        passReqToCallback: true
+    },
+    function(req, email, password, done) {
+        process.nextTick(function() {
+            User.findOne({'local.email': email}, function(err, user) {
+                if (err) { return done(err) }
+                if (user) {
+                    return done(null, false, req.flash('signUpMessage', 'That email is already taken.'));
+                } else {
+                    var newUser = new User();
+                    newUser.local.email = email;
+                    newUser.local.password = newUser.generateHash(password);
+
+                    newUser.save(function(err) {
+                        if (err) {throw err}
+                        return done(null, newUser);
+                    });
+                }
+            });
+        })
+    }));
+
+    passport.use('local-login', new LocalStrategy({
+        usernameField: 'email',
+        passwordField: 'password',
+        passReqToCallback: true
+    },
+    function(req, email, password, done) {
+        User.findOne({'local.email': email}, function(err, user) {
+            console.log('First')
+            if (err) {return done(err);}
+            console.log('Second')
+            if(!user) {
+                console.log('Login error')
+                var err = new Error('Login failed')
+                return done(null, false, 'Invalid username.');
+            }
+            if (!user.validPassword(password)) {
+                console.log('bad password')
+                return done(null, false, 'Invalid password.');
+            }
+            return done(null, user);
+        })
+    }));
+};

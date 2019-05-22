@@ -1,14 +1,32 @@
-var createError = require('http-errors');
 var express = require('express');
+var app = express();
+var session = require('express-session');
+var createError = require('http-errors');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var flash = require('connect-flash');
+app.use(require('cors')());
+//Mongoose
+var mongoose = require('mongoose');
+mongoose.connect('mongodb://localhost/discin?retryWrites=true', {useNewUrlParser: true, useCreateIndex: true});
 
+//Passport
+var passport = require('passport');
+app.use(session({secret: 'secretsecretsecret', resave: true, saveUninitialized: true}));
+app.use(passport.initialize());
+app.use(passport.session());
+require('./config/passport')(passport);
+app.use(flash());
+
+//Routes
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var discRouter = require('./routes/discs');
 var apiRouter = require('./routes/api');
 
-var app = express();
+//Models
+require('./models/users');
+require('./models/discs');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -20,10 +38,10 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+//Routes
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
-app.use('/api', apiRouter);
-
+app.use('/disc', discRouter )
+app.use('/api', apiRouter)
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));

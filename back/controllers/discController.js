@@ -9,35 +9,55 @@ exports.index_get = function(req, res) {
 };
 
 exports.disc_list = function(req, res, next) {
-    const { payload: { id } } = req;
+    const id = req.session.passport.user;
     Disc.find({owner: id})
         .exec(function(err, list_discs) {
             if (err) { return next(err); }
-            res.json(list_discs);
+            res.render('disc_list', {title: 'Disc List', disc_list:list_discs});
         })
 };
 
 exports.disc_create_get = function(req, res, next) {
-    res.send('Disc Create GET');
+    res.render('disc_form');
 };
 
 exports.disc_create_post = function(req, res, next) {
-    console.log('Made it to the top')
-    const { payload: { id } } = req;
-    const {body: { disc } } = req;
-    //const user = User.findById(id)
-    disc.owner = id;
-    console.log(disc);
-    const newDisc = new Disc(disc);
-    console.log('Created new disc object')
-    newDisc.save(function(err) {
-        if (err) { return next(err)}
-        res.send('Disc created')
+    body('brand', 'Brand must not be empty.').isLength({min: 1}).trim();
+    body('color', 'Color must not be empty.').isLength({min: 1}).trim();
+    body('weight', 'Weight must not be empty.').isLength({min: 1}).trim();
+    body('type', 'Type must not be empty.').isLength({min: 1}).trim();
+
+    const newDisc = new Disc({
+        owner: req.session.passport.user,
+        brand: req.body.brand,
+        name: req.body.name,
+        color: req.body.color,
+        weight: req.body.weight,
+        type: req.body.type,
+        speed: req.body.speed,
+        glide: req.body.glide,
+        turn: req.body.turn,
+        fade: req.body.fade
     });
+    Disc.findOne(newDisc, function(err, success) {
+        if (err) {return next(err)}
+        if (success == null) {
+            newDisc.save(function(err) {
+                if (err) { return next(err); }
+                res.redirect('/disc')
+            });
+        }
+        res.send('Disc already added')
+    })
+
 }
 
 exports.disc_update_get = function(req, res, next) {
-    res.send('Disc Update GET');
+    Disc.findById(req.params.id)
+        .exec(function(err, disc) {
+            if (err) { return next(err); }
+            res.render('disc_form', {title: 'Disc List', disc: disc});
+        })
 };
 
 exports.disc_update_post = function(req, res, next) {
@@ -45,13 +65,16 @@ exports.disc_update_post = function(req, res, next) {
 }
 
 exports.disc_delete_get = function(req, res, next) {
-    res.send('Disc Delete GET');
+    Disc.findByIdAndDelete(req.params.id, function deleteDisc(err) {
+        if (err) { return next(err); }
+        res.redirect('/disc');
+    })
 };
 
 exports.disc_delete_post = function(req, res, next) {
-    Disc.findByIdAndDelete(req.body.discid, function(err) {
+    Disc.findByIdAndDelete(req.params.id, function deleteDisc(err) {
         if (err) { return next(err); }
-        res.send('Disc Deleted');
+        res.redirect('/disc');
     })
 }
 
