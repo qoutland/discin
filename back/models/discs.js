@@ -7,7 +7,7 @@ var DiscSchema = mongoose.Schema(
         name: {type: String, required: true},
         color: {type: String, required: true},
         weight: {type: Number, min: 120, max: 180},
-        type: {type: String, required: true, enum: ['Distance Driver', 'Fairway Driver', 'Mid-range', 'Putter'], },
+        type: {type: String, required: true, enum: ['Distance Driver', 'Fairway Driver', 'Mid-Range', 'Putter'], },
         speed: {type: Number, min: 1, max: 13},
         glide: {type: Number, min: 1, max: 7},
         turn: {type: Number, min: -5, max: 1},
