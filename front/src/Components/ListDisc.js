@@ -9,7 +9,7 @@ class Disc extends Component {
     render() {
         return (
             <tr>
-                <td>{this.props.disc._id}</td>
+                <td>{this.props.disc.brand}</td>
                 <td>{this.props.disc.name}</td>
                 <td>{this.props.disc.color}</td>
                 <td>{this.props.disc.weight}</td>
@@ -34,12 +34,21 @@ class ListDisc extends Component {
         this.handleEdit = this.handleEdit.bind(this);
         this.handleDelete = this.handleDelete.bind(this)
         this.state = {
+            friend: false,
             discs: []
         }
     }
     componentDidMount() {
-        axios.post('http://localhost:5000/api/disc/', null, {headers: {'Authorization': this.Auth.getToken()}})
-        .then(res => this.setState({discs: res.data}))
+        console.log(this.props)
+        if (this.props.history.location.state !== undefined) {
+            this.setState({ friend: true});
+            axios.post('http://localhost:5000/api/friends/disc', {friend: this.props.history.location.state.friend}, {headers: {'Authorization': this.Auth.getToken()}})
+            .then(res => this.setState({discs: res.data.discs}))
+        }
+        else {
+            axios.post('http://localhost:5000/api/disc/', null, {headers: {'Authorization': this.Auth.getToken()}})
+            .then(res => this.setState({discs: res.data}))
+        }
     }
 
     handleEdit(disc) {
@@ -61,12 +70,27 @@ class ListDisc extends Component {
             return <Disc disc={disc} key={i} handleEdit={handleEdit} handleDelete={handleDelete}/>
         })
     }
+
+    showButtons = () => {
+        if (this.state.friend) {
+            return (
+                <Link to="/friends" className="btn btn-primary" style={{marginBottom: 10}}>Back</Link>
+            )
+        } else {
+            return (
+                <div>
+                    <Link to="/add" className="btn btn-success" style={{marginBottom: 10}}>Add Disc</Link>
+                    <Link to="/friends" className="btn btn-primary ml-auto" style={{marginBottom: 10}}>Friends</Link>
+                </div>
+            )
+        }
+    }
+
     render() {
         return(
             <div className="container">
             <br />
-            <Link to="/add" className="btn btn-success" style={{marginBottom: 10}}>Add Disc</Link>
-            <Link to="/friends" className="btn btn-primary ml-auto" style={{marginBottom: 10}}>Friends</Link>
+            {this.showButtons()}
             <table className="table table-striped table-hover">
                 <thead>
                     <tr>

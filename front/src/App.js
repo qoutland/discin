@@ -26,13 +26,13 @@ class App extends Component {
         return (
             <Router>
                     <NavBar auth={this.state.auth}/>
-                    <Route name="home" exact path="/" component={ListDisc} />
+                    <Route name="home" exact path="/(|friends/discs)" component={ListDisc} />
                     <Route name="signup" path="/signup" component={Signup} />
                     <Route name="login" path="/login" component={Login} />
                     <Route name="profile" path="/profile" component={Profile} />
                     <Route name="addDisc" path="/add" component={AddDisc} />
                     <Route name="editDisc" path="/edit" component={EditDisc} />
-                    <Route name="friends" path="/friends" component={Friends} />
+                    <Route name="friends" exact path="/friends" component={Friends} />
             </Router>
          )
     }

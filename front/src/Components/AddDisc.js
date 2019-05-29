@@ -37,7 +37,7 @@ class AddDisc extends Component {
             glide: this.state.glide,
             turn: this.state.turn,
             fade: this.state.fade,
-            purchase_date: this.state.purchase_date
+            purchase_date: this.state.purchase_date ? this.state.purchase_date : Date.now()
         }
         axios.post('http://localhost:5000/api/disc/create', newDisc, {headers: {'Authorization': this.Auth.getToken()}})
         .then(res => {
@@ -88,6 +88,7 @@ class AddDisc extends Component {
                         <div class="form-group col-md-3">
                             <label htmlFor="type">Type:</label>
                             <select className="form-control" placeholder="Select Type" name="type" required value={this.state.type} onChange={this.onChange}>
+                            <option value="" disabled>Type...</option>
                             <option value="Distance Driver">Distance Driver</option>
                             <option value="Fairway Driver">Fairway Driver</option>
                             <option value="Mid-Range">Mid-Range</option>

@@ -3,6 +3,7 @@ var passport = require('passport');
 var jwt = require('jsonwebtoken');
 var User = require('../models/users');
 var Disc = require('../models/discs');
+var Friend = require('../models/friends');
 //var fs = require('fs');
 //var privateKEY  = fs.readFileSync('./private.key');
 //var publicKEY  = fs.readFileSync('./public.key');
@@ -87,7 +88,8 @@ router.post('/disc/create', authorized, function(req,res) {
     newDisc.turn = req.body.turn;
     newDisc.fade = req.body.fade;
     newDisc.purchase_date = req.body.purchase_date;
-    Disc.findOne({brand: req.body.brand,
+    Disc.findOne({owner: req.userId,
+                  brand: req.body.brand,
                   name: req.body.name,
                   color: req.body.color,
                   weight: req.body.weight,
@@ -130,58 +132,151 @@ router.post('/disc/:id/delete', authorized, function(req,res) {
 router.post('/friends', authorized, function(req,res) {
     User.findById(req.userId, function(err, user) {
         if (err) {return res.json({status: 'failed', error: err})}
-        if(!user) {return res.json({status: 'failed', error: 'User not found'})}
-        User.find({_id: {$ne: req.userId, $nin: user.friends.map(a=>a.id)}},{email:0, password:0, friends:0}, function(err,others) {
-            if (err) {return res.json({status: 'failed', error: err})}
-            res.json({status: 'success', friends: user.friends, others: others})
+        if(!user) {return res.json({status: 'failed', error: 'No friends found'})}
+        console.log(user.requested.map(a=>a.id))
+        User.find(
+            {_id: {
+                $ne: req.userId,
+                $nin: user.requested.map(a=>a.id).concat(user.requests.map(a=>a.id).concat(user.friends.map(a=>a.id)))}
+            }, function(err, others) {
+            if (err) { return res.json({status: 'failed', error: err}) }
+            return res.json({status: 'success', requested: user.requested, requests: user.requests, friends: user.friends, others: others })
         })
-    })
+     })
 });
 
 router.post('/friends/add', authorized, function(req, res) {
-    console.log(req.body.id)
-    console.log(req.userId)
-    User.findById(req.body.id, function(err, friend) {
-        console.log('1')
-        if (err) {return res.json({status: 'failed', error: err})}
-        if(!friend) {return res.json({status: 'failed', error: 'Friend not found'})}
-        User.findById(req.userId, function(err, user) {
-            console.log('2')
-            if (err) {return res.json({status: 'failed', error: err})}
-            if(!friend) {return res.json({status: 'failed', error: 'User not found'})}
-            user.friends.push({id: friend._id, username: friend.username, num_discs: friend.num_discs, status: 'pending'})
-            friend.friends.push({id: user._id, username: user.username, num_discs: user.num_discs, status: 'pending_confirm'})
-
-            user.save(function(err) {
-                if (err) {return res.json({status: 'failed', error: err})}
+    console.log(req.body)
+    User.findById(req.userId, function(err, user) {
+        if (err) {return res.json({status: 'failed', error: err});}
+        if(!user) {return res.json({status: 'failed', error: 'Could not find user'});}
+        User.findById(req.body.id, function(err, friend) {
+            if (err) {return res.json({status: 'failed', error: err});}
+            if(!friend) {return res.json({status: 'failed', error: 'Could not find friend'});}
+            user.init_request(friend.id, friend.username, function(err) {
+                if (err) {return res.json({status: 'failed', error: err});}
             })
-            friend.save(function(err) {
-                if (err) {return res.json({status: 'failed', error: err})}
+            friend.comp_request(user._id, user.username, function(err) {
+                if (err) {return res.json({status: 'failed', error: err});}
             })
-            User.find({_id: {$ne: req.userId, $nin: user.friends.map(a=>a.id)}},{email:0, password:0, friends:0}, function(err,others) {
-                if (err) {return res.json({status: 'failed', error: err})}
-                res.json({status: 'success', message: 'Requested friend', friends: user.friends, others: others})
+            User.find(
+                {_id: {
+                    $ne: req.userId,
+                    $nin: user.requested.map(a=>a.id).concat(user.requests.map(a=>a.id).concat(user.friends.map(a=>a.id)))}
+                }, function(err, others) {
+                if (err) { return res.json({status: 'failed', error: err}) }
+                return res.json({status: 'success', requested: user.requested, requests: user.requests, friends: user.friends, others: others })
             })
         })
-        
-    })
+    });    
 });
 
 router.post('/friends/remove', authorized, function(req, res) {
-    res.json({status: 'success'})
+    User.findById(req.userId, function(err, user) {
+        if (err) {return res.json({status: 'failed', error: err})}
+        if(!user) {return res.json({status: 'failed', error: 'User not found'})}
+        User.findById(req.body.friend.id, function(err, friend) {
+            if (err) {return res.json({status: 'failed', error: err})}
+            if(!friend) {return res.json({status: 'failed', error: 'Friend not found'})}
+                //User actions
+                user.friends.pull(req.body.friend);
+                user.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                //Friend actions
+                var requested = friend.friends.filter(a=> a.id == String(user._id))
+                friend.friends.pull(requested[0])
+                friend.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                User.find(
+                    {_id: {
+                        $ne: req.userId,
+                        $nin: user.requested.map(a=>a.id).concat(user.requests.map(a=>a.id).concat(user.friends.map(a=>a.id)))}
+                    }, function(err, others) {
+                    if (err) { return res.json({status: 'failed', error: err}) }
+                    return res.json({status: 'success', requested: user.requested, requests: user.requests, friends: user.friends, others: others })
+                })
+        })   
+    })
 });
 
 router.post('/friends/confirm', authorized, function(req, res) {
     User.findById(req.userId, function(err, user) {
         if (err) {return res.json({status: 'failed', error: err})}
         if(!user) {return res.json({status: 'failed', error: 'User not found'})}
-        User.findById(req.body.id, function(err, friend) {
+        User.findById(req.body.friend.id, function(err, friend) {
             if (err) {return res.json({status: 'failed', error: err})}
             if(!friend) {return res.json({status: 'failed', error: 'Friend not found'})}
             if (req.body.confirm) {
-                user.friends[{id: user._id}].status = 'confirm';
-                frien.friends[{id: user._id}].status = 'confirm';
+                //User actions
+                user.requests.pull(req.body.friend);
+                user.friends.push({id: req.body.friend.id, username: req.body.friend.username});
+                user.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                //Friend actions
+                var requested = friend.requested.filter(a=> a.id == String(user._id))
+                friend.requested.pull(requested[0])
+                friend.friends.push({id: req.userId, username: user.username});
+                friend.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                User.find(
+                    {_id: {
+                        $ne: req.userId,
+                        $nin: user.requested.map(a=>a.id).concat(user.requests.map(a=>a.id).concat(user.friends.map(a=>a.id)))}
+                    }, function(err, others) {
+                    if (err) { return res.json({status: 'failed', error: err}) }
+                    return res.json({status: 'success', requested: user.requested, requests: user.requests, friends: user.friends, others: others })
+                })
+            } else {
+                //User actions
+                user.requests.pull(req.body.friend);
+                user.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                //Friend actions
+                var requested = friend.requested.filter(a=> a.id == String(user._id))
+                friend.requested.pull(requested[0])
+                friend.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                User.find(
+                    {_id: {
+                        $ne: req.userId,
+                        $nin: user.requested.map(a=>a.id).concat(user.requests.map(a=>a.id).concat(user.friends.map(a=>a.id)))}
+                    }, function(err, others) {
+                    if (err) { return res.json({status: 'failed', error: err}) }
+                    return res.json({status: 'success', requested: user.requested, requests: user.requests, friends: user.friends, others: others })
+                })
             }
+        })   
+    })
+});
+
+router.post('/friends/withdraw', authorized, function(req, res) {
+    User.findById(req.userId, function(err, user) {
+        if (err) {return res.json({status: 'failed', error: err})}
+        if(!user) {return res.json({status: 'failed', error: 'User not found'})}
+        User.findById(req.body.friend.id, function(err, friend) {
+            if (err) {return res.json({status: 'failed', error: err})}
+            if(!friend) {return res.json({status: 'failed', error: 'Friend not found'})}
+                //User actions
+                user.requested.pull(req.body.friend);
+                user.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                //Friend actions
+                var requested = friend.requests.filter(a=> a.id == String(user._id))
+                friend.requests.pull(requested[0])
+                friend.save((err) => {if(err){ return res.json({status:'failed',error: err})}})
+                User.find(
+                    {_id: {
+                        $ne: req.userId,
+                        $nin: user.requested.map(a=>a.id).concat(user.requests.map(a=>a.id).concat(user.friends.map(a=>a.id)))}
+                    }, function(err, others) {
+                    if (err) { return res.json({status: 'failed', error: err}) }
+                    return res.json({status: 'success', requested: user.requested, requests: user.requests, friends: user.friends, others: others })
+                })
+        })   
+    })
+});
+
+router.post('/friends/disc', authorized, function(req, res) {
+    User.findById(req.body.friend.id, function(err, user) {
+        if (err) {return res.json({status: 'failed', error: err})}
+        if (!user) {return res.json({status: 'failed',message: 'User not found'})}
+        Disc.find({owner: user.id}, function(err, discs) {
+            if (err) {return res.json({status: 'failed', error: err})}
+            if (!discs) {return res.json({status: 'failed',message: 'Discs not found'})}
+            return res.json({status: 'success', discs: discs})
         })
     })
 })
