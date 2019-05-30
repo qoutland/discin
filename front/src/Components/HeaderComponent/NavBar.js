@@ -26,7 +26,7 @@ export default class NavBar extends Component {
                     <a className="nav-link" href="/profile">Profile</a>
                 </li>
                 <li className="nav-item">
-                    <a className="nav-link" href="" onClick={this.handleLogout}>Logout</a>
+                    <button className="nav-link" href="#" onClick={this.handleLogout} style={{ backgroundColor: 'transparent', border: 'transparent'}}>Logout</button>
                 </li>
             </ul>
             )

@@ -22,7 +22,7 @@ export default class Login extends Component {
                 if (res.status ==='failed') {
                     return this.setState({ error: res.error})
                 }
-                this.props.history.replace({pathname:this.state.redirectTo ? this.state.redirectTo : '/', state: {auth:true}});
+                this.props.history.replace({pathname:this.state.redirectTo ? this.state.redirectTo : '/'});
             })
             .catch(err => {
                 alert(err);
